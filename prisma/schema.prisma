@@ -1,0 +1,132 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum EligibilityVerdict {
+  ELIGIBLE
+  LIKELY_ELIGIBLE
+  REQUIRES_CLARIFICATION
+  NOT_ELIGIBLE
+}
+
+enum EntityType {
+  INDIVIDUAL
+  LLC
+  C_CORP
+  NONPROFIT
+}
+
+model User {
+  id                      String   @id @default(cuid())
+  email                   String   @unique
+  passwordHash            String
+  createdAt               DateTime @default(now())
+  profile                 UserProfile?
+  savedSearches           SavedSearch[]
+  watchlist               WatchlistGrant[]
+}
+
+model UserProfile {
+  id                        String   @id @default(cuid())
+  userId                    String   @unique
+  entityType                EntityType
+  locationState             String
+  employees                 Int
+  revenueBand               String
+  isUsOwned                 Boolean
+  hasPriorFederalFunding    Boolean
+  naicsCodes                String[]
+  trlLevel                  Int
+  user                      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model GrantOpportunity {
+  id                         String   @id @default(cuid())
+  source                     String
+  sourceIdentifier           String
+  sourceUrl                  String
+  title                      String
+  agency                     String?
+  subAgency                  String?
+  program                    String?
+  fundingMin                 Float?
+  fundingMax                 Float?
+  ceiling                    Float?
+  floor                      Float?
+  closeDate                  DateTime?
+  openDate                   DateTime?
+  postedDate                 DateTime?
+  eligibilityTextRaw         String?
+  descriptionRaw             String?
+  keywords                   String[]
+  geography                  String[]
+  entityTypeConstraints      String[]
+  costShareRequired          Boolean?
+  citizenshipRequired        Boolean?
+  usOwnedRequired            Boolean?
+  naicsConstraints           String[]
+  sizeConstraints            String?
+  notes                      String?
+  extractionStatus           String   @default("pending")
+  extractionFailedReason     String?
+  lastSeenAt                 DateTime
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+  matches                    GrantMatch[]
+  watchlistedBy              WatchlistGrant[]
+
+  @@unique([source, sourceIdentifier])
+}
+
+model GrantMatch {
+  id                 String             @id @default(cuid())
+  grantId            String
+  userId             String
+  verdict            EligibilityVerdict
+  explanation        String
+  checklist          String[]
+  score              Int
+  scoreBreakdown     Json
+  createdAt          DateTime           @default(now())
+  grant              GrantOpportunity   @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  @@unique([grantId, userId])
+}
+
+model SavedSearch {
+  id              String   @id @default(cuid())
+  userId          String
+  name            String
+  keywords        String[]
+  agencies        String[]
+  minAward        Float?
+  maxAward        Float?
+  closeDateStart  DateTime?
+  closeDateEnd    DateTime?
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model WatchlistGrant {
+  id              String   @id @default(cuid())
+  userId          String
+  grantId         String
+  createdAt       DateTime @default(now())
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  grant           GrantOpportunity @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, grantId])
+}
+
+model AlertLog {
+  id              String   @id @default(cuid())
+  userId          String
+  sentAt          DateTime @default(now())
+  type            String
+  payload         Json
+}

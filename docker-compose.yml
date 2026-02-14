@@ -1,0 +1,43 @@
+version: '3.9'
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: grantfinder
+      POSTGRES_PASSWORD: grantfinder
+      POSTGRES_DB: grantfinder
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  web:
+    build: .
+    command: sh -c "npm run prisma:generate && npm run dev"
+    ports:
+      - '3000:3000'
+    env_file: .env
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  worker:
+    build: .
+    command: sh -c "npm run prisma:generate && npm run worker"
+    env_file: .env
+    depends_on:
+      - db
+    volumes:
+      - .:/app
+      - /app/node_modules
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+
+volumes:
+  pgdata:
